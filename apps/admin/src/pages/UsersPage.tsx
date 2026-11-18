@@ -1,5 +1,6 @@
 import { Badge, Button, Card, DataTable, ErrorMessage, type Column } from "@fieldnotes/ui";
 import { useEffect, useState } from "react";
+import { trackMemberAccessChanged, type MemberAccessChangeType } from "../analytics/adminEvents";
 import { adminApi, type Member, type Role } from "../api/client";
 import { useAdminAuth } from "../auth/AdminAuthContext";
 
@@ -20,6 +21,16 @@ export function UsersPage() {
     try {
       const updated = await adminApi.updateMember(member.id, changes);
       setMembers(members.map((m) => (m.id === updated.id ? { ...m, ...updated } : m)));
+      let changeType: MemberAccessChangeType = "role_changed";
+      if (changes.active !== undefined) changeType = updated.active ? "reactivated" : "deactivated";
+      trackMemberAccessChanged({
+        changeType,
+        memberId: updated.id,
+        newRole: updated.role,
+        previousRole: member.role,
+        active: updated.active,
+        organizationId: admin?.organization.id,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not update the user");
     }
