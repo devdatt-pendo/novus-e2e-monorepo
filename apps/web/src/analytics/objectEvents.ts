@@ -3,7 +3,10 @@
 declare global {
   interface Window {
     pendo?: {
-      track: (eventName: string, metadata?: Record<string, string | boolean | number>) => void;
+      track: (
+        eventName: string,
+        metadata?: Record<string, string | boolean | number | undefined>
+      ) => void;
     };
   }
 }
@@ -13,11 +16,12 @@ export interface NotebookObjectMetadata {
   organizationId?: string;
   noteId?: string;
   notebookShared?: boolean;
+  noteCount?: number;
 }
 
 export function trackNotebookObjectEvent(
   eventName: string,
   metadata: NotebookObjectMetadata
 ): void {
-  window.pendo?.track(eventName, metadata);
+  window.pendo?.track(eventName, { ...metadata });
 }

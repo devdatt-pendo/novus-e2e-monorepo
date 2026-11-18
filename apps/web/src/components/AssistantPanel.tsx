@@ -1,5 +1,6 @@
 import { Button, ErrorMessage, TextAreaField } from "@fieldnotes/ui";
 import { useState, type FormEvent } from "react";
+import { trackAssistantReplyReceived } from "../analytics/assistantEvents";
 import { api, type ChatMessage } from "../api/client";
 
 export function AssistantPanel() {
@@ -17,11 +18,27 @@ export function AssistantPanel() {
     setDraft("");
     setSending(true);
     setError(null);
+    const conversationTurn = next.filter((message) => message.role === "user").length;
     try {
-      const { reply } = await api.askAssistant(next);
+      const { reply, model } = await api.askAssistant(next);
       setMessages([...next, { role: "assistant", content: reply }]);
+      // The API returns model: null when OPENAI_API_KEY isn't configured.
+      trackAssistantReplyReceived({
+        outcome: model ? "answered" : "not_configured",
+        model: model ?? "none",
+        messageCount: next.length + 1,
+        conversationTurn,
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "The assistant could not answer");
+      const errorMessage = err instanceof Error ? err.message : "The assistant could not answer";
+      setError(errorMessage);
+      trackAssistantReplyReceived({
+        outcome: "failed",
+        model: "none",
+        messageCount: next.length,
+        conversationTurn,
+        errorMessage,
+      });
     } finally {
       setSending(false);
     }
